@@ -1,0 +1,12 @@
+{
+  "name": "client-gallery-template",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Client photo delivery gallery. The site itself is static with no build step; this file exists only for the optional admin.html tests.",
+  "scripts": {
+    "test": "node test/publish.spec.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}
