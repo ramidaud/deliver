@@ -3,10 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gallery Admin</title>
+<meta name="robots" content="noindex, nofollow">
+<title>Delivery Admin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@1,9..144,300;1,9..144,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <style>
 :root {
   --bg:          #f5f1ea;
@@ -33,7 +35,7 @@ body {
   padding: 40px 20px 100px;
 }
 
-.wrap { max-width: 760px; margin: 0 auto; }
+.wrap { max-width: 780px; margin: 0 auto; }
 
 h1 {
   font-family: 'Fraunces', serif;
@@ -53,6 +55,7 @@ section {
   padding: 26px 28px;
   margin-bottom: 22px;
 }
+section.dim { opacity: .5; pointer-events: none; }
 
 section h2 {
   font-family: 'Fraunces', serif;
@@ -88,44 +91,81 @@ input[type=text], input[type=password], textarea {
   outline: none;
 }
 input:focus, textarea:focus { border-color: var(--accent); }
+input:disabled { background: #f3efe8; color: var(--muted); }
 textarea { resize: vertical; min-height: 70px; }
 
-.row { display: flex; gap: 14px; }
-.row > div { flex: 1; }
+.row { display: flex; gap: 14px; flex-wrap: wrap; }
+.row > div { flex: 1; min-width: 150px; }
 
 .check-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   margin-top: 14px;
   font-size: 13px;
   color: var(--muted);
 }
-.check-row input { width: auto; }
+.check-row input { width: auto; margin-top: 3px; }
+.check-row label {
+  margin: 0; text-transform: none; font-weight: 400;
+  letter-spacing: normal; color: var(--muted); font-size: 13px;
+}
 
-.token-help {
-  margin-top: 8px;
-  font-size: 13px;
-  color: var(--muted);
-}
-.token-help summary {
-  cursor: pointer;
-  list-style: none;
-}
+.token-help { margin-top: 8px; font-size: 13px; color: var(--muted); }
+.token-help summary { cursor: pointer; list-style: none; }
 .token-help summary::-webkit-details-marker { display: none; }
 .token-help summary a { color: var(--accent); font-weight: 600; text-decoration: none; }
 .token-help summary a:hover { text-decoration: underline; }
-.token-help ol {
-  margin: 10px 0 4px 20px;
-  padding: 0;
-  line-height: 1.7;
+.token-help ol { margin: 10px 0 4px 20px; padding: 0; line-height: 1.7; }
+.token-help code { background: var(--line); padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+
+/* ── client overview ── */
+.clients { display: flex; flex-direction: column; gap: 8px; }
+.client-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
 }
-.token-help code {
-  background: var(--line);
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-size: 12px;
+.client-card.active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(108,71,255,.12); }
+.client-card .meta { flex: 1; min-width: 0; }
+.client-card .cname { font-weight: 600; }
+.client-card .csub { font-size: 12px; color: var(--muted); }
+.client-card .actions { display: flex; gap: 8px; flex-shrink: 0; }
+.empty-note { color: var(--muted); font-size: 13px; }
+
+button.primary {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 13px 22px;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
 }
+button.primary:hover { background: var(--accent-deep); }
+button.primary:disabled { background: #b8b0c9; cursor: not-allowed; }
+
+button.secondary, a.secondary {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  white-space: nowrap;
+}
+button.secondary:hover, a.secondary:hover { border-color: var(--accent); color: var(--accent); }
 
 .dropzone {
   border: 1.5px dashed var(--line);
@@ -139,8 +179,9 @@ textarea { resize: vertical; min-height: 70px; }
 }
 .dropzone.drag { border-color: var(--accent); background: rgba(108,71,255,0.05); }
 .dropzone strong { color: var(--ink); }
+.dropzone code { background: var(--line); padding: 1px 5px; border-radius: 4px; }
 
-.filelist { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.filelist { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; }
 .filerow {
   display: flex;
   justify-content: space-between;
@@ -169,33 +210,6 @@ textarea { resize: vertical; min-height: 70px; }
   margin-top: 16px;
 }
 
-button.primary {
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 13px 22px;
-  font-family: 'DM Sans', system-ui, sans-serif;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  width: 100%;
-}
-button.primary:hover { background: var(--accent-deep); }
-button.primary:disabled { background: #b8b0c9; cursor: not-allowed; }
-
-button.secondary {
-  background: none;
-  border: 1px solid var(--line);
-  color: var(--ink);
-  border-radius: 8px;
-  padding: 9px 16px;
-  font-family: 'DM Sans', system-ui, sans-serif;
-  font-size: 13px;
-  cursor: pointer;
-}
-button.secondary:hover { border-color: var(--accent); color: var(--accent); }
-
 .log {
   margin-top: 18px;
   background: #1f1b18;
@@ -204,7 +218,7 @@ button.secondary:hover { border-color: var(--accent); color: var(--accent); }
   padding: 14px 16px;
   font-family: ui-monospace, 'SF Mono', Menlo, monospace;
   font-size: 12px;
-  max-height: 260px;
+  max-height: 300px;
   overflow-y: auto;
   white-space: pre-wrap;
   display: none;
@@ -214,61 +228,50 @@ button.secondary:hover { border-color: var(--accent); color: var(--accent); }
 .log .err  { color: #ff8f8f; }
 .log .warn { color: #e8c17a; }
 
-.success {
-  display: none;
-  text-align: center;
-  padding: 20px 0 4px;
-}
+.success { display: none; text-align: center; padding: 20px 0 4px; }
 .success.show { display: block; }
 .success a {
-  display: inline-block;
-  margin-top: 10px;
-  color: var(--accent);
-  font-weight: 600;
-  text-decoration: none;
+  display: inline-block; margin-top: 10px;
+  color: var(--accent); font-weight: 600; text-decoration: none;
 }
 .success a:hover { text-decoration: underline; }
 
-footer {
-  text-align: center;
-  color: var(--muted);
-  font-size: 12px;
-  margin-top: 30px;
-}
+footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 30px; }
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <h1>Gallery admin</h1>
-  <p class="lede">Fill in the job details, drop in your exports, publish. Writes straight to <code>manifest.json</code> and the <code>hero/</code>, <code>full/</code>, <code>social/</code> folders of this repo as a single commit.</p>
+  <h1>Delivery admin</h1>
+  <p class="lede">Every client gallery in one place. This page holds no client information on its own &mdash; it asks GitHub for the list once you connect.</p>
 
+  <!-- ─────────── CONNECTION ─────────── -->
   <section>
     <h2>Connection</h2>
-    <p class="hint">A GitHub token that can write to this one repo. Kept only in this browser &mdash; never sent anywhere but api.github.com.</p>
+    <p class="hint">A GitHub token that can write to this repo. Kept only in this browser, sent only to GitHub.</p>
 
     <label for="f-token">GitHub token</label>
-    <input type="password" id="f-token" placeholder="github_pat_&hellip; or ghp_&hellip;" autocomplete="off">
+    <input type="password" id="f-token" placeholder="github_pat_&hellip;" autocomplete="off">
     <details class="token-help">
       <summary>Don't have a token? <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener" onclick="event.stopPropagation()">Generate one on GitHub &rarr;</a></summary>
       <ol>
-        <li>Token name: anything, e.g. <code>gallery admin</code></li>
+        <li>Token name: anything, e.g. <code>delivery admin</code></li>
         <li>Resource owner: your account</li>
         <li>Repository access → <strong>Only select repositories</strong> → pick this repo</li>
-        <li>Repository permissions → <strong>Contents</strong> → set to <strong>Read and write</strong></li>
-        <li>Generate token, copy it, paste it above (GitHub only shows it once)</li>
+        <li>Repository permissions → <strong>Contents</strong> → <strong>Read and write</strong></li>
+        <li>Generate, copy, paste above (GitHub shows it once)</li>
       </ol>
-      <p style="margin-top:10px;">Starting a new client repo from the template? The token is scoped to specific repos, so add the new one to its repository list or publishing will fail with a 403.</p>
+      <p style="margin-top:8px;">Contents covers both the files and the Releases that hold full-resolution downloads, so no other permission is needed.</p>
     </details>
 
-    <div class="row">
+    <div class="row" style="margin-top:16px;">
       <div>
-        <label for="f-owner">Repo owner</label>
+        <label for="f-owner">Owner</label>
         <input type="text" id="f-owner" placeholder="ramidaud">
       </div>
       <div>
-        <label for="f-repo">Repo name</label>
-        <input type="text" id="f-repo" placeholder="client-gallery-template">
+        <label for="f-repo">Repo</label>
+        <input type="text" id="f-repo" placeholder="deliver">
       </div>
       <div>
         <label for="f-branch">Branch</label>
@@ -278,20 +281,37 @@ footer {
 
     <div class="check-row">
       <input type="checkbox" id="f-remember">
-      <label for="f-remember" style="margin:0; text-transform:none; font-weight:400; letter-spacing:normal; color:var(--muted);">Remember token on this device (localStorage)</label>
+      <label for="f-remember">Remember token on this device</label>
     </div>
 
-    <div style="margin-top:16px; display:flex; gap:10px;">
-      <button class="secondary" id="btn-load">Load current site data</button>
+    <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap;">
+      <button class="secondary" id="btn-connect">Connect</button>
       <button class="secondary" id="btn-clear-token">Forget saved token</button>
     </div>
-    <div id="load-status" class="hint" style="margin-top:10px;"></div>
+    <div id="conn-status" class="hint" style="margin-top:10px; margin-bottom:0;"></div>
   </section>
 
-  <section>
+  <!-- ─────────── CLIENT OVERVIEW ─────────── -->
+  <section id="sec-clients" class="dim">
+    <h2>Your galleries</h2>
+    <p class="hint">Everything published in this repo. Only you can see this list &mdash; it loads with your token.</p>
+    <div class="clients" id="client-list"></div>
+    <div style="margin-top:16px;">
+      <button class="secondary" id="btn-new">+ New client gallery</button>
+    </div>
+  </section>
+
+  <!-- ─────────── JOB DETAILS ─────────── -->
+  <section id="sec-job" class="dim">
     <h2>Job details</h2>
+    <p class="hint" id="job-context">Pick a gallery above, or start a new one.</p>
+
     <label for="f-client">Client name</label>
     <input type="text" id="f-client" placeholder="Mansfield Family Photos">
+
+    <label for="f-slug">Folder / URL</label>
+    <input type="text" id="f-slug" placeholder="mansfield-family">
+    <p class="hint" id="slug-preview" style="margin:6px 0 0;"></p>
 
     <label for="f-date">Date</label>
     <input type="text" id="f-date" placeholder="May 2026">
@@ -300,48 +320,54 @@ footer {
     <textarea id="f-intro" placeholder="A selection from the shoot. Click any image to view full size and download."></textarea>
   </section>
 
-  <section>
-    <h2>Hero images</h2>
-    <p class="hint">Rotating banner at the top of the gallery. Optional &mdash; leave empty and it falls back to the first 5 social photos.</p>
+  <!-- ─────────── UPLOADS ─────────── -->
+  <section id="sec-files" class="dim">
+    <h2>Photos</h2>
+    <p class="hint">Social and hero images go in the repo. Full-resolution goes to a Release, which keeps the repo small no matter how many jobs you deliver.</p>
+
+    <label>Hero images</label>
     <div class="dropzone" data-target="hero">
-      <strong>Drop images</strong> or click to choose &mdash; goes to <code>hero/</code>
+      <strong>Drop images</strong> or click &mdash; the rotating banner. Optional.
     </div>
     <div class="filelist" id="list-hero"></div>
     <div class="filecount" id="count-hero"></div>
-  </section>
 
-  <section>
-    <h2>Social images (thumbnails + preview)</h2>
-    <p class="hint">Quality 80, 2048px long edge. Filenames here become the gallery order and must match <code>full/</code> exactly.</p>
+    <label style="margin-top:24px;">Social images</label>
     <div class="dropzone" data-target="social">
-      <strong>Drop images</strong> or click to choose &mdash; goes to <code>social/</code>
+      <strong>Drop images</strong> or click &mdash; Quality 80, 2048px long edge.
     </div>
     <div class="filelist" id="list-social"></div>
     <div class="filecount" id="count-social"></div>
-  </section>
 
-  <section>
-    <h2>Full-resolution images (downloads)</h2>
-    <p class="hint">Quality 100, no resize. Filenames must match <code>social/</code> exactly.</p>
+    <label style="margin-top:24px;">Full-resolution images</label>
     <div class="dropzone" data-target="full">
-      <strong>Drop images</strong> or click to choose &mdash; goes to <code>full/</code>
+      <strong>Drop images</strong> or click &mdash; Quality 100. Filenames must match the social set.
     </div>
     <div class="filelist" id="list-full"></div>
     <div class="filecount" id="count-full"></div>
+
     <div class="warnbox" id="mismatch-warning" style="display:none;"></div>
+    <div class="warnbox" id="name-warning" style="display:none;"></div>
   </section>
 
-  <section>
+  <!-- ─────────── PUBLISH ─────────── -->
+  <section id="sec-publish" class="dim">
     <h2>Publish</h2>
-    <p class="hint">Uploads everything and writes <code>manifest.json</code> in one commit.</p>
 
     <div class="check-row">
       <input type="checkbox" id="f-replace">
-      <label for="f-replace" style="margin:0; text-transform:none; font-weight:400; letter-spacing:normal; color:var(--muted);">
-        Start fresh &mdash; replace the whole gallery with what's dropped above
-      </label>
+      <label for="f-replace">Start fresh &mdash; replace this gallery's photo list with only what's dropped above</label>
     </div>
-    <p class="hint" id="publish-mode" style="margin:10px 0 18px;"></p>
+    <div class="check-row">
+      <input type="checkbox" id="f-zip" checked>
+      <label for="f-zip">Build a combined full-resolution zip for the Download All button</label>
+    </div>
+    <div class="check-row">
+      <input type="checkbox" id="f-refresh-page">
+      <label for="f-refresh-page">Update this gallery's page design from the current template</label>
+    </div>
+
+    <p class="hint" id="publish-mode" style="margin:14px 0 18px;"></p>
 
     <button class="primary" id="btn-publish">Publish gallery</button>
     <div class="log" id="log"></div>
@@ -357,19 +383,26 @@ footer {
 <input type="file" id="hidden-file-input" multiple accept="image/*" style="display:none;">
 
 <script>
-const CONFIG_KEY = 'photo-cms-config';
+const CONFIG_KEY = 'delivery-admin-config';
+const RESERVED = new Set(['_template', 'test', 'node_modules', '.github', '.git']);
 const files = { hero: new Map(), social: new Map(), full: new Map() };
 
-// ---------- config persistence (owner/repo/branch always; token only if opted in) ----------
+let clients = [];        // [{slug, client, date, photos, hero}]
+let current = null;      // slug being edited, or null for a new one
+let published = null;    // manifest of `current` as it exists on GitHub
+
+/* ══════════ config ══════════ */
 function loadConfig() {
   try {
-    const saved = JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}');
-    if (saved.owner)  document.getElementById('f-owner').value  = saved.owner;
-    if (saved.repo)   document.getElementById('f-repo').value   = saved.repo;
-    if (saved.branch) document.getElementById('f-branch').value = saved.branch;
-    if (saved.token)  { document.getElementById('f-token').value = saved.token; document.getElementById('f-remember').checked = true; }
+    const s = JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}');
+    if (s.owner)  document.getElementById('f-owner').value  = s.owner;
+    if (s.repo)   document.getElementById('f-repo').value   = s.repo;
+    if (s.branch) document.getElementById('f-branch').value = s.branch;
+    if (s.token) {
+      document.getElementById('f-token').value = s.token;
+      document.getElementById('f-remember').checked = true;
+    }
   } catch (e) {}
-  // sensible defaults inferred from the URL for a GitHub Pages project site
   const owner = document.getElementById('f-owner');
   const repo  = document.getElementById('f-repo');
   const parts = location.pathname.split('/').filter(Boolean);
@@ -379,13 +412,14 @@ function loadConfig() {
   if (!repo.value && parts.length) repo.value = parts[0];
 }
 function saveConfig() {
-  const remember = document.getElementById('f-remember').checked;
   const cfg = {
     owner: document.getElementById('f-owner').value.trim(),
     repo: document.getElementById('f-repo').value.trim(),
     branch: document.getElementById('f-branch').value.trim() || 'main',
   };
-  if (remember) cfg.token = document.getElementById('f-token').value.trim();
+  if (document.getElementById('f-remember').checked) {
+    cfg.token = document.getElementById('f-token').value.trim();
+  }
   localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg));
 }
 document.getElementById('btn-clear-token').addEventListener('click', () => {
@@ -406,7 +440,7 @@ function getCfg() {
   };
 }
 
-// ---------- GitHub API helper ----------
+/* ══════════ GitHub API ══════════ */
 async function gh(cfg, path, opts = {}) {
   const res = await fetch(`https://api.github.com${path}`, {
     ...opts,
@@ -426,7 +460,198 @@ async function gh(cfg, path, opts = {}) {
   return res.status === 204 ? null : res.json();
 }
 
-// ---------- file drop zones ----------
+// Release assets go to a different host and take raw bytes, not JSON.
+async function ghUpload(cfg, releaseId, name, blob) {
+  const url = `https://uploads.github.com/repos/${cfg.owner}/${cfg.repo}/releases/${releaseId}/assets?name=${encodeURIComponent(name)}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${cfg.token}`,
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/octet-stream',
+    },
+    body: blob,
+  });
+  if (!res.ok) {
+    let detail = '';
+    try { detail = (await res.json()).message; } catch (e) {}
+    throw new Error(`upload ${name} → ${res.status} ${detail}`);
+  }
+  return res.json();
+}
+
+function b64decode(s) { return decodeURIComponent(escape(atob(s))); }
+function b64encode(s) { return btoa(unescape(encodeURIComponent(s))); }
+
+function slugify(s) {
+  return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+
+// GitHub rewrites characters it dislikes in release asset names. Mirroring that
+// here keeps the manifest's URLs pointing at the names that actually land.
+function assetName(name) {
+  return name.replace(/[^A-Za-z0-9._-]/g, '.');
+}
+
+/* ══════════ connect + client list ══════════ */
+async function fetchManifestAt(cfg, slug) {
+  try {
+    const file = await gh(cfg, `/repos/${cfg.owner}/${cfg.repo}/contents/${slug}/manifest.json?ref=${cfg.branch}`);
+    const d = JSON.parse(b64decode(file.content));
+    return {
+      client: d.client || '', date: d.date || '', intro: d.intro || '',
+      hero: d.hero || [], photos: d.photos || [],
+      fullBase: d.fullBase || '', fullZip: d.fullZip || '', fullNames: d.fullNames || {},
+    };
+  } catch (e) {
+    if (/→ 404/.test(e.message)) return null;
+    throw e;
+  }
+}
+
+async function loadClients() {
+  const cfg = getCfg();
+  const status = document.getElementById('conn-status');
+  if (!cfg.token || !cfg.owner || !cfg.repo) {
+    status.textContent = 'Fill in token, owner and repo first.';
+    return false;
+  }
+  status.textContent = 'Connecting…';
+  try {
+    const root = await gh(cfg, `/repos/${cfg.owner}/${cfg.repo}/contents/?ref=${cfg.branch}`);
+    const dirs = root.filter(e => e.type === 'dir' && !RESERVED.has(e.name));
+    clients = [];
+    for (const d of dirs) {
+      const m = await fetchManifestAt(cfg, d.name);
+      if (m) clients.push({ slug: d.name, ...m });
+    }
+    clients.sort((a, b) => a.client.localeCompare(b.client));
+    renderClients();
+    status.textContent = `Connected. ${clients.length} gallery${clients.length === 1 ? '' : 's'} in ${cfg.owner}/${cfg.repo}.`;
+    document.getElementById('sec-clients').classList.remove('dim');
+    return true;
+  } catch (e) {
+    status.textContent = 'Could not connect: ' + e.message;
+    return false;
+  }
+}
+document.getElementById('btn-connect').addEventListener('click', () => { saveConfig(); loadClients(); });
+
+function renderClients() {
+  const cfg = getCfg();
+  const list = document.getElementById('client-list');
+  list.innerHTML = '';
+  if (!clients.length) {
+    const p = document.createElement('div');
+    p.className = 'empty-note';
+    p.textContent = 'No galleries published yet. Start one below.';
+    list.appendChild(p);
+    return;
+  }
+  for (const c of clients) {
+    const card = document.createElement('div');
+    card.className = 'client-card' + (c.slug === current ? ' active' : '');
+
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    const n = document.createElement('div');
+    n.className = 'cname';
+    n.textContent = c.client || c.slug;
+    const sub = document.createElement('div');
+    sub.className = 'csub';
+    sub.textContent = `${c.slug}  ·  ${c.photos.length} photo${c.photos.length === 1 ? '' : 's'}${c.date ? '  ·  ' + c.date : ''}`;
+    meta.appendChild(n); meta.appendChild(sub);
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    const view = document.createElement('a');
+    view.className = 'secondary';
+    view.target = '_blank'; view.rel = 'noopener';
+    view.href = `https://${cfg.owner}.github.io/${cfg.repo}/${c.slug}/`;
+    view.textContent = 'View';
+    const edit = document.createElement('button');
+    edit.className = 'secondary';
+    edit.textContent = 'Manage';
+    edit.addEventListener('click', () => selectClient(c.slug));
+    actions.appendChild(view); actions.appendChild(edit);
+
+    card.appendChild(meta); card.appendChild(actions);
+    list.appendChild(card);
+  }
+}
+
+function undim() {
+  ['sec-job', 'sec-files', 'sec-publish'].forEach(id =>
+    document.getElementById(id).classList.remove('dim'));
+}
+
+function clearFiles() {
+  files.hero.clear(); files.social.clear(); files.full.clear();
+  renderList('hero'); renderList('social'); renderList('full');
+}
+
+function selectClient(slug) {
+  const c = clients.find(x => x.slug === slug);
+  if (!c) return;
+  current = slug;
+  published = c;
+  document.getElementById('f-client').value = c.client;
+  document.getElementById('f-slug').value = c.slug;
+  document.getElementById('f-slug').disabled = true;
+  document.getElementById('f-date').value = c.date;
+  document.getElementById('f-intro').value = c.intro;
+  document.getElementById('job-context').textContent =
+    `Editing an existing gallery. ${c.photos.length} photo(s) already published.`;
+  clearFiles();
+  document.getElementById('f-replace').checked = false;
+  undim();
+  renderClients();
+  updateSlugPreview();
+  updatePublishMode();
+  document.getElementById('sec-job').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+document.getElementById('btn-new').addEventListener('click', () => {
+  current = null;
+  published = null;
+  document.getElementById('f-client').value = '';
+  document.getElementById('f-slug').value = '';
+  document.getElementById('f-slug').disabled = false;
+  document.getElementById('f-date').value = '';
+  document.getElementById('f-intro').value = '';
+  document.getElementById('job-context').textContent =
+    'New gallery. The folder name becomes part of the URL you send the client.';
+  clearFiles();
+  document.getElementById('f-replace').checked = false;
+  undim();
+  renderClients();
+  updateSlugPreview();
+  updatePublishMode();
+  document.getElementById('f-client').focus();
+});
+
+// Auto-fill the folder from the client name until the folder is typed in directly
+let slugTouched = false;
+document.getElementById('f-slug').addEventListener('input', () => { slugTouched = true; updateSlugPreview(); });
+document.getElementById('f-client').addEventListener('input', () => {
+  if (!slugTouched && !current) {
+    document.getElementById('f-slug').value = slugify(document.getElementById('f-client').value);
+  }
+  updateSlugPreview();
+});
+
+function updateSlugPreview() {
+  const cfg = getCfg();
+  const slug = slugify(document.getElementById('f-slug').value);
+  const el = document.getElementById('slug-preview');
+  if (!slug) { el.textContent = ''; return; }
+  el.textContent = `https://${cfg.owner || 'you'}.github.io/${cfg.repo || 'deliver'}/${slug}/`;
+  if (!current && clients.some(c => c.slug === slug)) {
+    el.textContent += '  ⚠ already exists — publishing would edit that gallery';
+  }
+}
+
+/* ══════════ file drop zones ══════════ */
 document.querySelectorAll('.dropzone').forEach(zone => {
   const target = zone.dataset.target;
   zone.addEventListener('click', () => {
@@ -440,9 +665,7 @@ document.querySelectorAll('.dropzone').forEach(zone => {
       zone.classList.toggle('drag', evt === 'dragover');
     });
   });
-  zone.addEventListener('drop', e => {
-    addFiles(target, e.dataTransfer.files);
-  });
+  zone.addEventListener('drop', e => addFiles(target, e.dataTransfer.files));
 });
 document.getElementById('hidden-file-input').addEventListener('change', e => {
   addFiles(e.target.dataset.target, e.target.files);
@@ -453,14 +676,14 @@ function addFiles(target, fileList) {
   for (const f of fileList) files[target].set(f.name, f);
   renderList(target);
 }
-function removeFile(target, name) {
-  files[target].delete(name);
-  renderList(target);
+function removeFile(target, name) { files[target].delete(name); renderList(target); }
+function fmtSize(b) {
+  if (b > 1e9) return (b / 1e9).toFixed(2) + ' GB';
+  if (b > 1e6) return (b / 1e6).toFixed(1) + ' MB';
+  return Math.round(b / 1e3) + ' KB';
 }
-function fmtSize(bytes) {
-  if (bytes > 1e6) return (bytes / 1e6).toFixed(1) + ' MB';
-  return Math.round(bytes / 1e3) + ' KB';
-}
+function totalSize(map) { let t = 0; for (const f of map.values()) t += f.size; return t; }
+
 function renderList(target) {
   const list = document.getElementById(`list-${target}`);
   list.innerHTML = '';
@@ -468,108 +691,73 @@ function renderList(target) {
     const row = document.createElement('div');
     row.className = 'filerow';
     const nameEl = document.createElement('span');
-    nameEl.className = 'name';
-    nameEl.textContent = f.name;
+    nameEl.className = 'name'; nameEl.textContent = f.name;
     const sizeEl = document.createElement('span');
-    sizeEl.className = 'size';
-    sizeEl.textContent = fmtSize(f.size);
-    row.appendChild(nameEl);
-    row.appendChild(sizeEl);
+    sizeEl.className = 'size'; sizeEl.textContent = fmtSize(f.size);
+    row.appendChild(nameEl); row.appendChild(sizeEl);
     const btn = document.createElement('button');
-    btn.textContent = '×';
-    btn.title = 'Remove';
+    btn.textContent = '×'; btn.title = 'Remove';
     btn.addEventListener('click', () => removeFile(target, f.name));
     row.appendChild(btn);
     list.appendChild(row);
   });
+  const n = files[target].size;
   document.getElementById(`count-${target}`).textContent =
-    files[target].size ? `${files[target].size} file${files[target].size === 1 ? '' : 's'}` : '';
+    n ? `${n} file${n === 1 ? '' : 's'}, ${fmtSize(totalSize(files[target]))}` : '';
   checkMismatch();
+  checkNames();
   updatePublishMode();
 }
+
 function checkMismatch() {
   const box = document.getElementById('mismatch-warning');
-  const socialNames = new Set(files.social.keys());
-  const fullNames = new Set(files.full.keys());
-  const onlySocial = [...socialNames].filter(n => !fullNames.has(n));
-  const onlyFull = [...fullNames].filter(n => !socialNames.has(n));
-  if (onlySocial.length || onlyFull.length) {
+  const s = new Set(files.social.keys()), f = new Set(files.full.keys());
+  const onlyS = [...s].filter(n => !f.has(n));
+  const onlyF = [...f].filter(n => !s.has(n));
+  if (onlyS.length || onlyF.length) {
     const bits = [];
-    if (onlySocial.length) bits.push(`in social/ but not full/: ${onlySocial.join(', ')}`);
-    if (onlyFull.length) bits.push(`in full/ but not social/: ${onlyFull.join(', ')}`);
+    if (onlyS.length) bits.push(`social only: ${onlyS.slice(0, 6).join(', ')}${onlyS.length > 6 ? ` +${onlyS.length - 6}` : ''}`);
+    if (onlyF.length) bits.push(`full only: ${onlyF.slice(0, 6).join(', ')}${onlyF.length > 6 ? ` +${onlyF.length - 6}` : ''}`);
     box.style.display = 'block';
-    box.textContent = 'Filename mismatch — ' + bits.join(' | ');
-  } else {
-    box.style.display = 'none';
-  }
+    box.textContent = 'Filename mismatch — ' + bits.join('  |  ');
+  } else box.style.display = 'none';
 }
 
-// ---------- published state (what's already live) ----------
-// null = not yet checked. Publish always re-fetches so this is only for display.
-let published = null;
-
-async function fetchManifest(cfg) {
-  try {
-    const file = await gh(cfg, `/repos/${cfg.owner}/${cfg.repo}/contents/manifest.json?ref=${cfg.branch}`);
-    const data = JSON.parse(decodeURIComponent(escape(atob(file.content))));
-    return {
-      client: data.client || '',
-      date: data.date || '',
-      intro: data.intro || '',
-      hero: data.hero || [],
-      photos: data.photos || [],
-    };
-  } catch (e) {
-    if (/→ 404/.test(e.message)) {
-      // A missing manifest and a wrong repo/branch both 404. Only treat it as
-      // "no manifest yet" if the branch itself resolves — otherwise a typo in
-      // the repo field would look like an empty gallery and wipe the photo list.
-      await gh(cfg, `/repos/${cfg.owner}/${cfg.repo}/git/ref/heads/${cfg.branch}`);
-      return { client: '', date: '', intro: '', hero: [], photos: [] };
-    }
-    throw e;
-  }
+function checkNames() {
+  const box = document.getElementById('name-warning');
+  const odd = [...files.full.keys()].filter(n => assetName(n) !== n);
+  if (odd.length) {
+    box.style.display = 'block';
+    box.textContent = 'GitHub will rename these full-resolution files on upload (spaces and symbols become dots). '
+      + 'Downloads still work — the gallery is told the new names. Affected: '
+      + odd.slice(0, 5).join(', ') + (odd.length > 5 ? ` +${odd.length - 5}` : '');
+  } else box.style.display = 'none';
 }
 
+/* ══════════ publish mode readout ══════════ */
 function updatePublishMode() {
   const el = document.getElementById('publish-mode');
   const replace = document.getElementById('f-replace').checked;
   const dropped = files.social.size;
   const live = published ? published.photos.length : null;
 
-  if (replace) {
-    el.innerHTML = live
-      ? `<strong>Replace mode.</strong> The gallery will list only the ${dropped} social photo(s) dropped above, discarding the ${live} currently published. Old image files stay in the repo but disappear from the gallery.`
-      : `<strong>Replace mode.</strong> The gallery will list only the ${dropped} social photo(s) dropped above.`;
-  } else if (live === null) {
-    el.innerHTML = `<strong>Add mode.</strong> Anything already published is kept and the ${dropped} social photo(s) above are added. Click "Load current site data" to see what's live now.`;
+  if (live === null) {
+    el.innerHTML = `<strong>New gallery.</strong> Will publish the ${dropped} social photo(s) dropped above.`;
+  } else if (replace) {
+    el.innerHTML = `<strong>Replace mode.</strong> Gallery will list only the ${dropped} photo(s) above, discarding the ${live} published now.`;
   } else {
     const merged = new Set([...published.photos, ...files.social.keys()]);
-    el.innerHTML = `<strong>Add mode.</strong> ${live} photo(s) already published + ${dropped} dropped = <strong>${merged.size} in the gallery</strong> after publishing.`;
+    el.innerHTML = `<strong>Add mode.</strong> ${live} published + ${dropped} dropped = <strong>${merged.size} in the gallery</strong>.`;
+  }
+  const fullBytes = totalSize(files.full);
+  if (fullBytes) {
+    el.innerHTML += `<br>Full-resolution upload: ${fmtSize(fullBytes)} to a Release.`;
   }
 }
-document.getElementById('f-replace').addEventListener('change', updatePublishMode);
+['f-replace', 'f-zip'].forEach(id =>
+  document.getElementById(id).addEventListener('change', updatePublishMode));
 
-// ---------- load current site data ----------
-document.getElementById('btn-load').addEventListener('click', async () => {
-  const cfg = getCfg();
-  const status = document.getElementById('load-status');
-  if (!cfg.token || !cfg.owner || !cfg.repo) { status.textContent = 'Fill in token, owner and repo first.'; return; }
-  status.textContent = 'Loading…';
-  try {
-    const data = await fetchManifest(cfg);
-    published = data;
-    document.getElementById('f-client').value = data.client;
-    document.getElementById('f-date').value = data.date;
-    document.getElementById('f-intro').value = data.intro;
-    status.textContent = `Loaded. Currently published: ${data.photos.length} photo(s), ${data.hero.length} hero image(s). Existing images stay put — only drop files above for photos you're adding or replacing.`;
-    updatePublishMode();
-  } catch (e) {
-    status.textContent = 'Could not load manifest.json: ' + e.message;
-  }
-});
-
-// ---------- publish ----------
+/* ══════════ publish ══════════ */
 const logEl = document.getElementById('log');
 function log(msg, cls) {
   logEl.classList.add('show');
@@ -582,26 +770,28 @@ function log(msg, cls) {
 
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result.split(',')[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+    const r = new FileReader();
+    r.onload = () => resolve(r.result.split(',')[1]);
+    r.onerror = reject;
+    r.readAsDataURL(file);
   });
 }
 
-// simple concurrency-limited map
 async function pool(items, limit, worker) {
-  const results = new Array(items.length);
+  const out = new Array(items.length);
   let i = 0;
   async function run() {
-    while (i < items.length) {
-      const idx = i++;
-      results[idx] = await worker(items[idx], idx);
-    }
+    while (i < items.length) { const idx = i++; out[idx] = await worker(items[idx], idx); }
   }
   await Promise.all(new Array(Math.min(limit, items.length)).fill(0).map(run));
-  return results;
+  return out;
 }
+
+// Anything bigger than this is more likely to run the browser out of memory
+// than to finish, so the combined zip is skipped and the gallery falls back.
+const ZIP_LIMIT_BYTES = 1.5 * 1024 * 1024 * 1024;
+const MAX_BLOB_BYTES = 70 * 1024 * 1024;   // base64 inflates ~33% vs the 100MB API limit
+const MAX_ASSET_BYTES = 2 * 1024 * 1024 * 1024;
 
 document.getElementById('btn-publish').addEventListener('click', async () => {
   const cfg = getCfg();
@@ -610,118 +800,197 @@ document.getElementById('btn-publish').addEventListener('click', async () => {
   logEl.innerHTML = '';
   logEl.classList.add('show');
 
-  if (!cfg.token || !cfg.owner || !cfg.repo) { log('Fill in token, owner and repo first.', 'err'); return; }
+  if (!cfg.token || !cfg.owner || !cfg.repo) { log('Connect first.', 'err'); return; }
 
   const client = document.getElementById('f-client').value.trim();
-  const date = document.getElementById('f-date').value.trim();
-  const intro = document.getElementById('f-intro').value.trim();
+  const slug   = slugify(document.getElementById('f-slug').value);
+  const date   = document.getElementById('f-date').value.trim();
+  const intro  = document.getElementById('f-intro').value.trim();
   if (!client) { log('Client name is required.', 'err'); return; }
+  if (!slug)   { log('Folder name is required.', 'err'); return; }
 
-  const allEntries = [];
-  for (const [name, file] of files.hero)   allEntries.push({ path: `hero/${name}`,   file });
-  for (const [name, file] of files.social) allEntries.push({ path: `social/${name}`, file });
-  for (const [name, file] of files.full)   allEntries.push({ path: `full/${name}`,   file });
-
-  // The API takes base64, which inflates payloads by ~33%, so the real ceiling
-  // against GitHub's 100MB blob limit is ~70MB of actual file.
-  const MAX_FILE_BYTES = 70 * 1024 * 1024;
-  const oversized = allEntries.filter(e => e.file.size > MAX_FILE_BYTES);
-  if (oversized.length) {
-    log(`Skipped — over the ~70MB per-file API limit: ${oversized.map(e => e.path).join(', ')}`, 'warn');
-  }
-  const uploadEntries = allEntries.filter(e => e.file.size <= MAX_FILE_BYTES);
+  const replace = document.getElementById('f-replace').checked;
+  const wantZip = document.getElementById('f-zip').checked;
+  const refreshPage = document.getElementById('f-refresh-page').checked;
 
   btn.disabled = true;
   saveConfig();
 
   try {
-    // Always re-read what's live rather than trusting an earlier "Load" click,
-    // so a stale page can't silently drop photos from the manifest.
-    const replace = document.getElementById('f-replace').checked;
-    let baseHero = [], basePhotos = [];
-    if (replace) {
-      log('Replace mode — the manifest will list only the files dropped above.', 'warn');
+    /* ---- 1. what's already live ---- */
+    let base = { hero: [], photos: [], fullNames: {}, fullBase: '', fullZip: '' };
+    const liveNow = await fetchManifestAt(cfg, slug);
+    if (liveNow === null) {
+      log(`New gallery at /${slug}/`);
+    } else if (replace) {
+      log('Replace mode — the photo list will be rebuilt from scratch.', 'warn');
+      base.fullBase = liveNow.fullBase; base.fullZip = liveNow.fullZip;
     } else {
-      log('Reading the published manifest…');
-      const live = await fetchManifest(cfg);
-      published = live;
-      baseHero = live.hero;
-      basePhotos = live.photos;
-      log(`  keeping ${basePhotos.length} published photo(s), ${baseHero.length} hero image(s)`, 'ok');
+      base = { ...liveNow };
+      log(`Keeping ${base.photos.length} published photo(s), ${base.hero.length} hero image(s)`, 'ok');
     }
 
-    const finalHero   = [...new Set([...baseHero,   ...files.hero.keys()])].sort();
-    const finalPhotos = [...new Set([...basePhotos, ...files.social.keys()])].sort();
-
+    const finalHero   = [...new Set([...base.hero,   ...files.hero.keys()])].sort();
+    const finalPhotos = [...new Set([...base.photos, ...files.social.keys()])].sort();
     if (!finalPhotos.length) {
-      log('Nothing to publish — the gallery would have zero photos. Drop some social images first.', 'err');
-      btn.disabled = false;
-      return;
+      log('Nothing to publish — the gallery would have zero photos.', 'err');
+      btn.disabled = false; return;
     }
 
-    log(`Reading ${uploadEntries.length} file(s) and creating blobs…`);
-    let done = 0;
-    const blobs = await pool(uploadEntries, 4, async entry => {
+    /* ---- 2. full-resolution to a Release ---- */
+    const fullNames = { ...(replace ? {} : base.fullNames) };
+    let fullBase = replace ? '' : base.fullBase;
+    let fullZip  = replace ? '' : base.fullZip;
+
+    if (files.full.size) {
+      const tooBig = [...files.full.values()].filter(f => f.size > MAX_ASSET_BYTES);
+      if (tooBig.length) log(`Skipped, over the 2GB asset limit: ${tooBig.map(f => f.name).join(', ')}`, 'warn');
+      const assets = [...files.full.values()].filter(f => f.size <= MAX_ASSET_BYTES);
+
+      log(`Preparing Release "${slug}" for ${assets.length} full-resolution file(s)…`);
+      let release;
+      try {
+        release = await gh(cfg, `/repos/${cfg.owner}/${cfg.repo}/releases/tags/${encodeURIComponent(slug)}`);
+      } catch (e) {
+        if (!/→ 404/.test(e.message)) throw e;
+        release = await gh(cfg, `/repos/${cfg.owner}/${cfg.repo}/releases`, {
+          method: 'POST',
+          body: JSON.stringify({
+            tag_name: slug,
+            name: `${client} — full resolution`,
+            body: 'Full-resolution downloads for this gallery.',
+            draft: false, prerelease: false, make_latest: 'false',
+            target_commitish: cfg.branch,
+          }),
+        });
+        log('  created release', 'ok');
+      }
+
+      const existing = new Map((release.assets || []).map(a => [a.name, a.id]));
+      let done = 0;
+      for (const f of assets) {
+        const an = assetName(f.name);
+        if (existing.has(an)) {
+          await gh(cfg, `/repos/${cfg.owner}/${cfg.repo}/releases/assets/${existing.get(an)}`, { method: 'DELETE' });
+        }
+        await ghUpload(cfg, release.id, an, f);
+        fullNames[f.name] = an;
+        done++;
+        log(`  [${done}/${assets.length}] ${an}`, 'ok');
+      }
+
+      fullBase = `https://github.com/${cfg.owner}/${cfg.repo}/releases/download/${encodeURIComponent(slug)}/`;
+
+      /* combined zip for the Download All button */
+      if (wantZip) {
+        const bytes = assets.reduce((t, f) => t + f.size, 0);
+        if (typeof JSZip === 'undefined') {
+          log('Combined zip skipped — the zip library did not load. '
+            + 'Individual downloads still work; re-publish to try again.', 'warn');
+        } else if (bytes > ZIP_LIMIT_BYTES) {
+          log(`Combined zip skipped — ${fmtSize(bytes)} is too large to assemble in a browser. `
+            + 'Individual downloads still work.', 'warn');
+        } else {
+          log('Building combined zip…');
+          const zip = new JSZip();
+          for (const f of assets) zip.file(f.name, f);
+          const blob = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
+          const zipName = `${slug}-full-resolution.zip`;
+          if (existing.has(zipName)) {
+            await gh(cfg, `/repos/${cfg.owner}/${cfg.repo}/releases/assets/${existing.get(zipName)}`, { method: 'DELETE' });
+          }
+          await ghUpload(cfg, release.id, zipName, blob);
+          fullZip = fullBase + zipName;
+          log(`  uploaded ${zipName} (${fmtSize(blob.size)})`, 'ok');
+        }
+      }
+    }
+
+    /* ---- 3. social + hero into the repo ---- */
+    const entries = [];
+    for (const [name, file] of files.hero)   entries.push({ path: `${slug}/hero/${name}`,   file });
+    for (const [name, file] of files.social) entries.push({ path: `${slug}/social/${name}`, file });
+
+    const oversized = entries.filter(e => e.file.size > MAX_BLOB_BYTES);
+    if (oversized.length) log(`Skipped, over the ~70MB file limit: ${oversized.map(e => e.path).join(', ')}`, 'warn');
+    const uploads = entries.filter(e => e.file.size <= MAX_BLOB_BYTES);
+
+    let n = 0;
+    const blobs = await pool(uploads, 4, async entry => {
       const content = await fileToBase64(entry.file);
       const blob = await gh(cfg, `/repos/${cfg.owner}/${cfg.repo}/git/blobs`, {
-        method: 'POST',
-        body: JSON.stringify({ content, encoding: 'base64' }),
+        method: 'POST', body: JSON.stringify({ content, encoding: 'base64' }),
       });
-      done++;
-      log(`  [${done}/${uploadEntries.length}] ${entry.path}`, 'ok');
+      n++;
+      log(`  [${n}/${uploads.length}] ${entry.path}`, 'ok');
       return { path: entry.path, sha: blob.sha };
     });
+    if (uploads.length) log(`Uploaded ${uploads.length} image(s) to the repo`, 'ok');
 
+    /* ---- 4. gallery page ---- */
+    const pageExists = liveNow !== null;
+    if (!pageExists || refreshPage) {
+      const tpl = await gh(cfg, `/repos/${cfg.owner}/${cfg.repo}/contents/_template/index.html?ref=${cfg.branch}`);
+      const pageBlob = await gh(cfg, `/repos/${cfg.owner}/${cfg.repo}/git/blobs`, {
+        method: 'POST', body: JSON.stringify({ content: tpl.content.replace(/\n/g, ''), encoding: 'base64' }),
+      });
+      blobs.push({ path: `${slug}/index.html`, sha: pageBlob.sha });
+      log(pageExists ? '  gallery page refreshed from template' : '  gallery page created', 'ok');
+    }
+
+    /* ---- 5. manifest ---- */
     const manifest = { client, date, intro, hero: finalHero, photos: finalPhotos };
-    const manifestBlob = await gh(cfg, `/repos/${cfg.owner}/${cfg.repo}/git/blobs`, {
-      method: 'POST',
-      body: JSON.stringify({ content: btoa(unescape(encodeURIComponent(JSON.stringify(manifest, null, 2)))), encoding: 'base64' }),
-    });
-    blobs.push({ path: 'manifest.json', sha: manifestBlob.sha });
-    log('manifest.json ready', 'ok');
+    if (fullBase) manifest.fullBase = fullBase;
+    if (fullZip)  manifest.fullZip  = fullZip;
+    if (Object.keys(fullNames).length) manifest.fullNames = fullNames;
 
-    log(`Fetching current state of ${cfg.branch}…`);
+    const mBlob = await gh(cfg, `/repos/${cfg.owner}/${cfg.repo}/git/blobs`, {
+      method: 'POST',
+      body: JSON.stringify({ content: b64encode(JSON.stringify(manifest, null, 2)), encoding: 'base64' }),
+    });
+    blobs.push({ path: `${slug}/manifest.json`, sha: mBlob.sha });
+
+    /* ---- 6. one commit ---- */
+    log('Committing…');
     const ref = await gh(cfg, `/repos/${cfg.owner}/${cfg.repo}/git/ref/heads/${cfg.branch}`);
     const parentSha = ref.object.sha;
-    const parentCommit = await gh(cfg, `/repos/${cfg.owner}/${cfg.repo}/git/commits/${parentSha}`);
-
-    log('Building tree…');
+    const parent = await gh(cfg, `/repos/${cfg.owner}/${cfg.repo}/git/commits/${parentSha}`);
     const tree = await gh(cfg, `/repos/${cfg.owner}/${cfg.repo}/git/trees`, {
       method: 'POST',
       body: JSON.stringify({
-        base_tree: parentCommit.tree.sha,
+        base_tree: parent.tree.sha,
         tree: blobs.map(b => ({ path: b.path, mode: '100644', type: 'blob', sha: b.sha })),
       }),
     });
-
-    log('Creating commit…');
     const commit = await gh(cfg, `/repos/${cfg.owner}/${cfg.repo}/git/commits`, {
       method: 'POST',
       body: JSON.stringify({
         message: `Publish ${client}${date ? ' (' + date + ')' : ''}`,
-        tree: tree.sha,
-        parents: [parentSha],
+        tree: tree.sha, parents: [parentSha],
       }),
     });
-
-    log(`Updating ${cfg.branch}…`);
     await gh(cfg, `/repos/${cfg.owner}/${cfg.repo}/git/refs/heads/${cfg.branch}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ sha: commit.sha }),
+      method: 'PATCH', body: JSON.stringify({ sha: commit.sha }),
     });
 
-    log(`Done — commit ${commit.sha.slice(0, 7)}. Gallery now lists ${finalPhotos.length} photo(s).`, 'ok');
+    log(`Done — commit ${commit.sha.slice(0, 7)}. Gallery lists ${finalPhotos.length} photo(s).`, 'ok');
 
-    // What we just wrote is now what's live, so Add mode stays accurate
-    // without needing a reload.
-    published = { client, date, intro, hero: finalHero, photos: finalPhotos };
-    files.hero.clear(); files.social.clear(); files.full.clear();
-    renderList('hero'); renderList('social'); renderList('full');
+    /* ---- 7. resync local state ---- */
+    current = slug;
+    published = { client, date, intro, hero: finalHero, photos: finalPhotos, fullBase, fullZip, fullNames };
+    const idx = clients.findIndex(c => c.slug === slug);
+    if (idx >= 0) clients[idx] = { slug, ...published };
+    else { clients.push({ slug, ...published }); clients.sort((a, b) => a.client.localeCompare(b.client)); }
+    renderClients();
+    clearFiles();
     document.getElementById('f-replace').checked = false;
+    document.getElementById('f-refresh-page').checked = false;
+    document.getElementById('f-slug').disabled = true;
     updatePublishMode();
 
-    const pagesUrl = `https://${cfg.owner}.github.io/${cfg.repo}/`;
-    document.getElementById('success-link').href = pagesUrl;
+    const url = `https://${cfg.owner}.github.io/${cfg.repo}/${slug}/`;
+    document.getElementById('success-link').href = url;
+    document.getElementById('success-link').textContent = url;
     document.getElementById('success').classList.add('show');
   } catch (e) {
     log('Failed: ' + e.message, 'err');
@@ -731,6 +1000,7 @@ document.getElementById('btn-publish').addEventListener('click', async () => {
 });
 
 updatePublishMode();
+if (getCfg().token && getCfg().owner && getCfg().repo) loadClients();
 </script>
 </body>
 </html>
