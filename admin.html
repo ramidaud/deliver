@@ -455,6 +455,12 @@ async function gh(cfg, path, opts = {}) {
   if (!res.ok) {
     let detail = '';
     try { detail = (await res.json()).message; } catch (e) {}
+    // On a 403 GitHub names the permission the endpoint wanted, which is far
+    // more useful than "not accessible".
+    const needs = res.headers.get('X-Accepted-GitHub-Permissions');
+    if (res.status === 403 && needs) {
+      detail += ` — this endpoint needs token permission: ${needs}`;
+    }
     throw new Error(`${opts.method || 'GET'} ${path} → ${res.status} ${detail}`);
   }
   return res.status === 204 ? null : res.json();
