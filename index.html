@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Photo Gallery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@1,9..144,300;1,9..144,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<style>
+:root {
+  --bg:          #f5f1ea;
+  --paper:       #fdfaf4;
+  --ink:         #2a2522;
+  --muted:       #7a6f63;
+  --accent:      #6c47ff;
+  --accent-deep: #5235cc;
+  --line:        rgba(42, 37, 34, 0.12);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ──────────────────────────────
+   HERO
+────────────────────────────── */
+.hero-wrap {
+  position: relative;
+  height: 72vh;
+  min-height: 460px;
+  overflow: hidden;
+  background: #120d20;
+}
+
+.hero-img {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  will-change: transform;
+}
+
+.hero-img.kb {
+  animation: kenBurns 9s ease-in-out forwards;
+}
+
+@keyframes kenBurns {
+  from { transform: scale(1)    translate(0%, 0%); }
+  to   { transform: scale(1.09) translate(-1.5%, -0.8%); }
+}
+
+/* gradient: dark at top for nav readability, dark at bottom for title */
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, rgba(10,6,22,0.72) 0%, transparent 22%),
+    linear-gradient(to top,    rgba(10,6,22,0.90) 0%, transparent 52%);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* top bar: brand left, social links right */
+.hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 28px;
+}
+
+.hero-brand {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-weight: 300;
+  font-size: 1.05rem;
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: 0.01em;
+}
+
+.hero-social {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.hero-social a {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.62);
+  text-decoration: none;
+  transition: color 0.18s;
+}
+
+.hero-social a:hover { color: rgba(255, 255, 255, 0.95); }
+
+/* bottom title block */
+.hero-bottom {
+  padding: 0 36px 40px;
+}
+
+.hero-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+  margin-bottom: 10px;
+}
+
+h1 {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-weight: 300;
+  font-size: clamp(2.5rem, 6vw, 4.75rem);
+  line-height: 1.02;
+  color: #fff;
+  letter-spacing: -0.025em;
+  margin-bottom: 8px;
+}
+
+.hero-date {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* ──────────────────────────────
+   DOT NAV
+────────────────────────────── */
+.dot-nav {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(8, 5, 20, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  padding: 11px 16px;
+}
+
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  border: none;
+  transition: all 0.38s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.dot.active {
+  background: var(--accent);
+  width: 20px;
+}
+
+/* ──────────────────────────────
+   FILMSTRIP + DOWNLOAD ALL
+────────────────────────────── */
+.strip-wrap {
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  padding: 14px 20px 12px;
+}
+
+.strip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.strip-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.btn-dl-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid rgba(108, 71, 255, 0.35);
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 6px 14px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s, color 0.18s;
+}
+
+.btn-dl-all:hover {
+  background: rgba(108, 71, 255, 0.08);
+  border-color: var(--accent);
+}
+
+.btn-dl-all:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.filmstrip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.filmstrip::-webkit-scrollbar { display: none; }
+
+.film-tile {
+  flex: 0 0 100px;
+  height: 70px;
+  border-radius: 5px;
+  overflow: hidden;
+  cursor: pointer;
+  scroll-snap-align: start;
+  border: 2.5px solid transparent;
+  opacity: 0.68;
+  transition: border-color 0.22s, opacity 0.22s;
+}
+
+.film-tile.active { border-color: var(--accent); opacity: 1; }
+.film-tile:hover  { opacity: 1; }
+
+.film-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ──────────────────────────────
+   GRID
+────────────────────────────── */
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  padding: 12px 20px 80px;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.tile {
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 4px;
+  cursor: zoom-in;
+  background: #e4ddd3;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.48s ease, transform 0.48s ease;
+}
+
+.tile.visible { opacity: 1; transform: translateY(0); }
+
+.tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 0;
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.38s ease;
+}
+
+.tile img.loaded { opacity: 1; }
+.tile:hover img  { transform: scale(1.05); }
+
+/* ──────────────────────────────
+   LIGHTBOX
+────────────────────────────── */
+.lb {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 5, 20, 0.97);
+  z-index: 100;
+  display: none;
+  flex-direction: column;
+  animation: lbIn 0.2s ease;
+}
+
+.lb.open { display: flex; }
+
+@keyframes lbIn { from { opacity: 0; } to { opacity: 1; } }
+
+.lb-stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 56px 76px 20px;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.lb-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+  will-change: transform, opacity;
+}
+
+@keyframes outLeft  { to   { transform: translateX(-72px); opacity: 0; } }
+@keyframes outRight { to   { transform: translateX(72px);  opacity: 0; } }
+@keyframes inLeft   { from { transform: translateX(72px);  opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes inRight  { from { transform: translateX(-72px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.lb-img.out-left  { animation: outLeft  0.22s ease forwards; }
+.lb-img.out-right { animation: outRight 0.22s ease forwards; }
+.lb-img.in-left   { animation: inLeft   0.22s ease forwards; }
+.lb-img.in-right  { animation: inRight  0.22s ease forwards; }
+
+.lb-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 30px;
+  cursor: pointer;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.18s;
+  font-family: inherit;
+  z-index: 2;
+}
+
+.lb-close:hover { color: #fff; }
+
+.lb-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.18s, transform 0.18s;
+  z-index: 2;
+}
+
+.lb-nav:hover { background: rgba(255,255,255,0.15); transform: translateY(-50%) scale(1.07); }
+.lb-prev { left: 20px; }
+.lb-next { right: 20px; }
+
+.lb-bar {
+  background: rgba(8, 5, 20, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 14px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.lb-counter {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  font-variant-numeric: tabular-nums;
+}
+
+.lb-actions { display: flex; gap: 8px; }
+
+.btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.82);
+  padding: 10px 18px;
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 3px;
+  font-weight: 500;
+  transition: background 0.18s, border-color 0.18s;
+}
+
+.btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.38); }
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.btn-primary:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+
+/* ──────────────────────────────
+   FOOTER
+────────────────────────────── */
+footer {
+  text-align: center;
+  padding: 48px 24px;
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+footer a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(108, 71, 255, 0.28);
+  padding-bottom: 1px;
+  transition: border-color 0.18s;
+}
+
+footer a:hover { border-color: var(--accent); }
+
+footer .mark {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 18px;
+  color: var(--ink);
+  display: block;
+  margin-bottom: 6px;
+}
+
+/* ──────────────────────────────
+   MOBILE
+────────────────────────────── */
+@media (max-width: 700px) {
+  .hero-wrap    { height: 58vh; min-height: 380px; }
+  .hero-top     { padding: 16px 18px; }
+  .hero-brand   { font-size: 0.95rem; }
+  .hero-social  { gap: 12px; }
+  .hero-social a { font-size: 11px; }
+  .hero-bottom  { padding: 0 20px 36px; }
+  h1            { font-size: clamp(2rem, 8.5vw, 2.75rem); }
+
+  .strip-wrap   { padding: 10px 12px 10px; }
+  .film-tile    { flex: 0 0 72px; height: 54px; }
+
+  .gallery      { grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 8px 8px 64px; }
+
+  .lb-stage     { padding: 52px 10px 10px; }
+  .lb-nav       { width: 40px; height: 40px; font-size: 16px; }
+  .lb-prev      { left: 4px; }
+  .lb-next      { right: 4px; }
+  .lb-bar       { padding: 10px 14px; }
+  .btn          { padding: 9px 13px; font-size: 12px; }
+}
+
+@media (max-width: 420px) {
+  .hero-social a:not(:first-child) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero-wrap">
+  <div class="hero-img" id="heroImg"></div>
+  <div class="hero-overlay">
+    <div class="hero-top">
+      <span class="hero-brand">Rami Daud Photography</span>
+      <nav class="hero-social">
+        <a href="https://ramidaud.com" target="_blank" rel="noopener">Website</a>
+        <a href="https://www.instagram.com/ramidaud/" target="_blank" rel="noopener">Instagram</a>
+        <a href="https://www.linkedin.com/in/ramidaudphoto/" target="_blank" rel="noopener">LinkedIn</a>
+      </nav>
+    </div>
+    <div class="hero-bottom">
+      <h1 id="title">Sweet Sixteen</h1>
+      <div class="hero-date" id="subtitle">May 2026</div>
+    </div>
+  </div>
+  <div class="dot-nav" id="dotNav"></div>
+</div>
+
+<!-- FILMSTRIP -->
+<div class="strip-wrap">
+  <div class="strip-header">
+    <div class="strip-label">All Photos</div>
+    <button class="btn-dl-all" id="dlAll">&#8595; Download All</button>
+  </div>
+  <div class="filmstrip" id="filmstrip"></div>
+</div>
+
+<!-- GRID -->
+<main class="gallery" id="gallery"></main>
+
+<!-- FOOTER -->
+<footer>
+  <span class="mark">Rami Daud</span>
+  Photographs &copy; <span id="year"></span>. All rights reserved.<br>
+  Questions? <a href="mailto:ramidaud@me.com">ramidaud@me.com</a>
+</footer>
+
+<!-- LIGHTBOX -->
+<div class="lb" id="lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer">
+  <div class="lb-stage" id="lbStage">
+    <button class="lb-close" aria-label="Close">&times;</button>
+    <button class="lb-nav lb-prev" aria-label="Previous photo">&#8592;</button>
+    <img class="lb-img" id="lbImg" alt="">
+    <button class="lb-nav lb-next" aria-label="Next photo">&#8594;</button>
+  </div>
+  <div class="lb-bar">
+    <div class="lb-counter" id="lbCounter"></div>
+    <div class="lb-actions">
+      <a class="btn" id="dlSocial" download>Social size</a>
+      <a class="btn btn-primary" id="dlFull" download>Full resolution</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const HERO_INTERVAL = 6000;
+
+const state = {
+  client:    'gallery',
+  photos:    [],
+  heroFiles: [],
+  index:     0,
+  heroIndex: 0,
+  heroTimer: null,
+  navLocked: false,
+};
+
+document.getElementById('year').textContent = new Date().getFullYear();
+
+fetch('manifest.json')
+  .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+  .then(data => {
+    if (data.client) {
+      document.getElementById('title').textContent = data.client;
+      document.title = data.client;
+      state.client = data.client;
+    }
+    if (data.date) document.getElementById('subtitle').textContent = data.date;
+    state.photos    = data.photos || [];
+    // hero array: use manifest.hero if populated, else first 5 from photos
+    state.heroFiles = (data.hero && data.hero.length)
+      ? data.hero
+      : state.photos.slice(0, 5);
+    init();
+  })
+  .catch(() => {
+    document.getElementById('gallery').innerHTML =
+      '<p style="grid-column:1/-1;text-align:center;color:var(--muted);padding:80px 24px;font-size:14px;">' +
+      'Could not load <code>manifest.json</code>. Make sure it sits next to <code>index.html</code>.</p>';
+  });
+
+function init() {
+  buildHero();
+  buildFilmstrip();
+  buildGrid();
+  initDownloadAll();
+}
+
+/* ── HERO ── */
+function buildHero() {
+  const count = state.heroFiles.length;
+  if (count === 0) return;
+
+  const dotNav = document.getElementById('dotNav');
+  for (let i = 0; i < count; i++) {
+    const d = document.createElement('button');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.setAttribute('aria-label', 'Feature photo ' + (i + 1));
+    d.addEventListener('click', () => setHero(i, true));
+    dotNav.appendChild(d);
+  }
+
+  setHero(0, false);
+
+  if (count > 1) {
+    state.heroTimer = setInterval(() => {
+      setHero((state.heroIndex + 1) % count, false);
+    }, HERO_INTERVAL);
+  }
+}
+
+function setHero(i, manual) {
+  if (manual && state.heroTimer) {
+    clearInterval(state.heroTimer);
+    state.heroTimer = null;
+  }
+  state.heroIndex = i;
+
+  // hero images live in hero/ if manifest.hero is set, else social/
+  const folder = (state.heroFiles === state.photos.slice(0, 5)) ? 'social' : 'hero';
+  const heroImg = document.getElementById('heroImg');
+  heroImg.style.backgroundImage = `url('${folder}/${encodeURIComponent(state.heroFiles[i])}')`;
+  heroImg.classList.remove('kb');
+  void heroImg.offsetWidth;
+  heroImg.classList.add('kb');
+
+  document.querySelectorAll('#dotNav .dot')
+    .forEach((d, j) => d.classList.toggle('active', j === i));
+}
+
+/* ── FILMSTRIP ── */
+function buildFilmstrip() {
+  const strip = document.getElementById('filmstrip');
+  state.photos.forEach((name, i) => {
+    const tile = document.createElement('div');
+    tile.className = 'film-tile' + (i === 0 ? ' active' : '');
+    tile.addEventListener('click', () => openLightbox(i));
+    const img = document.createElement('img');
+    img.loading = 'lazy';
+    img.src = 'social/' + encodeURIComponent(name);
+    img.alt = '';
+    tile.appendChild(img);
+    strip.appendChild(tile);
+  });
+}
+
+function syncFilmstrip(i) {
+  document.querySelectorAll('.film-tile').forEach((t, j) => {
+    t.classList.toggle('active', j === i);
+  });
+  const active = document.querySelector('.film-tile.active');
+  if (active) active.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+}
+
+/* ── GRID ── */
+function buildGrid() {
+  const g = document.getElementById('gallery');
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        setTimeout(() => entry.target.classList.add('visible'), 30);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.06 });
+
+  state.photos.forEach((name, i) => {
+    const tile = document.createElement('div');
+    tile.className = 'tile';
+    tile.style.transitionDelay = (i % 4) * 55 + 'ms';
+    tile.addEventListener('click', () => openLightbox(i));
+
+    const img = document.createElement('img');
+    img.loading = 'lazy';
+    img.src = 'social/' + encodeURIComponent(name);
+    img.alt = '';
+    img.onload = () => img.classList.add('loaded');
+
+    tile.appendChild(img);
+    g.appendChild(tile);
+    observer.observe(tile);
+  });
+}
+
+/* ── DOWNLOAD ALL ── */
+function initDownloadAll() {
+  const btn = document.getElementById('dlAll');
+  btn.addEventListener('click', async () => {
+    if (btn.disabled) return;
+    btn.disabled = true;
+
+    const zip    = new JSZip();
+    const social = zip.folder('social');
+    const full   = zip.folder('full-resolution');
+    const total  = state.photos.length;
+
+    for (let i = 0; i < total; i++) {
+      const name = state.photos[i];
+      btn.textContent = `Preparing… (${i + 1} / ${total})`;
+      try {
+        const [socialRes, fullRes] = await Promise.all([
+          fetch('social/' + encodeURIComponent(name)),
+          fetch('full/'   + encodeURIComponent(name)),
+        ]);
+        social.file(name, await socialRes.blob());
+        full.file(name,   await fullRes.blob());
+      } catch (e) {
+        console.warn('Could not fetch', name, e);
+      }
+    }
+
+    btn.textContent = 'Creating zip…';
+    const content = await zip.generateAsync({ type: 'blob' });
+    const url     = URL.createObjectURL(content);
+    const a       = document.createElement('a');
+    a.href        = url;
+    a.download    = state.client.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '.zip';
+    a.click();
+    URL.revokeObjectURL(url);
+
+    btn.disabled    = false;
+    btn.textContent = '↓ Download All';
+  });
+}
+
+/* ── LIGHTBOX ── */
+const lb        = document.getElementById('lightbox');
+const lbImg     = document.getElementById('lbImg');
+const lbCounter = document.getElementById('lbCounter');
+const dlSocial  = document.getElementById('dlSocial');
+const dlFull    = document.getElementById('dlFull');
+
+function setLbPhoto(i) {
+  const name = state.photos[i];
+  lbImg.src = 'social/' + encodeURIComponent(name);
+  lbImg.alt = name;
+  lbCounter.textContent = (i + 1) + ' of ' + state.photos.length;
+  dlSocial.href = 'social/' + encodeURIComponent(name);
+  dlSocial.setAttribute('download', name);
+  dlFull.href = 'full/' + encodeURIComponent(name);
+  dlFull.setAttribute('download', name);
+}
+
+function openLightbox(i) {
+  state.index = i;
+  setLbPhoto(i);
+  lb.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  syncFilmstrip(i);
+}
+
+function closeLightbox() {
+  lb.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function nav(d) {
+  if (state.navLocked) return;
+  state.navLocked = true;
+
+  const outCls = d > 0 ? 'out-left'  : 'out-right';
+  const inCls  = d > 0 ? 'in-left'   : 'in-right';
+
+  lbImg.classList.add(outCls);
+  setTimeout(() => {
+    state.index = (state.index + d + state.photos.length) % state.photos.length;
+    setLbPhoto(state.index);
+    lbImg.classList.remove(outCls);
+    lbImg.classList.add(inCls);
+    lbImg.addEventListener('animationend', () => {
+      lbImg.classList.remove(inCls);
+      state.navLocked = false;
+    }, { once: true });
+    syncFilmstrip(state.index);
+  }, 200);
+}
+
+document.querySelector('.lb-close')
+  .addEventListener('click', closeLightbox);
+document.querySelector('.lb-prev')
+  .addEventListener('click', e => { e.stopPropagation(); nav(-1); });
+document.querySelector('.lb-next')
+  .addEventListener('click', e => { e.stopPropagation(); nav(1); });
+document.getElementById('lbStage')
+  .addEventListener('click', e => { if (e.target.id === 'lbStage') closeLightbox(); });
+
+document.addEventListener('keydown', e => {
+  if (!lb.classList.contains('open')) return;
+  if      (e.key === 'Escape')     closeLightbox();
+  else if (e.key === 'ArrowLeft')  nav(-1);
+  else if (e.key === 'ArrowRight') nav(1);
+});
+
+let touchStartX = 0;
+lbImg.addEventListener('touchstart', e => {
+  touchStartX = e.changedTouches[0].screenX;
+}, { passive: true });
+lbImg.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].screenX - touchStartX;
+  if (Math.abs(dx) > 44) nav(dx < 0 ? 1 : -1);
+}, { passive: true });
+</script>
+
+</body>
+</html>
