@@ -6,12 +6,15 @@ Single-file gallery for client photo delivery. Drop in your photos, push to GitH
 
 ## Checklist for a new client job
 
-- [ ] Create a new repo on GitHub as a copy of this template (not a fork — no shared history)
-- [ ] Push the repo, enable GitHub Pages: Settings → Pages → Deploy from branch → main → / (root)
+- [ ] From this repo's GitHub page, click **Use this template** → **Create a new repository**, name it for the client
+- [ ] Enable GitHub Pages on the new repo: Settings → Pages → Deploy from branch → main → / (root)
+- [ ] Add the new repo to your token's repository list (see [token setup](#one-time-setup--create-a-token) — skipping this is the usual cause of a 403 on publish)
 - [ ] Export photos from Lightroom into `full/` and `social/` (identical filenames in each)
-- [ ] Fill in client name, date, intro, and upload the photos — either via `admin.html` (see below) or by hand
+- [ ] Fill in client name, date, intro, and upload the photos via `admin.html`
 - [ ] Wait 1 to 2 minutes, visit your URL, test on phone
 - [ ] Send the link to the client
+
+> **Setup once:** turn on Settings → General → **Template repository** in this repo so the "Use this template" button appears. It creates each client repo with fresh history, which is what you want — a fork would carry another client's commits.
 
 ---
 
@@ -22,21 +25,28 @@ The repo ships with `admin.html` — a page you open in your browser to fill in 
 **One-time setup — create a token:**
 
 1. GitHub → Settings → Developer settings → Personal access tokens → **Fine-grained tokens** → Generate new token
-2. Repository access: **Only select repositories** → pick this one repo
+2. Repository access: **Only select repositories** → pick the gallery repo(s)
 3. Permissions → Repository permissions → **Contents: Read and write**
 4. Generate, copy the token (you won't see it again)
+
+One token can cover every client gallery: edit it and add each new repo to its repository list as you create them. A 403 on publish almost always means the repo isn't on that list yet.
 
 **Publishing a job:**
 
 1. Visit `https://<your-username>.github.io/<repo-name>/admin.html`
 2. Paste the token, confirm owner/repo/branch (auto-filled from the URL when possible)
-3. Fill in client name, date, intro
-4. Drag your `hero/`, `full/`, and `social/` exports into their respective drop zones
-5. Click **Publish gallery** — it commits everything at once and shows a link to the live page
+3. Click **Load current site data** — fills in the existing details and shows what's already published
+4. Fill in client name, date, intro
+5. Drag your `hero/`, `full/`, and `social/` exports into their respective drop zones
+6. Click **Publish gallery** — it commits everything at once and shows a link to the live page
 
 The token stays in your browser only (opt in to "Remember token on this device" to keep it across visits — otherwise it clears on refresh). Nothing is sent anywhere except `api.github.com`.
 
-**Limits:** GitHub's Contents API caps individual files at 100MB (full-res JPEGs are almost never that large). Uploading many large files from the admin page can take a few minutes depending on your upload speed — the log panel shows progress as it goes.
+**Add mode vs replace mode.** By default publishing *adds* to the gallery: whatever is already published stays, and dropped files are merged in. This is what you want when sending a client a few extra frames, or fixing a typo in the intro without re-uploading anything. Tick **Start fresh** only when you genuinely want the gallery to contain nothing but the files currently dropped in — for instance if you re-exported a job under new filenames. The line above the publish button always states the resulting photo count before you commit.
+
+**Limits:** the API sends files base64-encoded, which inflates them by about a third, so the practical per-file ceiling is ~70MB against GitHub's 100MB blob limit. Oversized files are listed and skipped rather than failing the publish. Uploading many large files can take a few minutes depending on your connection — the log panel shows progress as it goes.
+
+**Repo and Pages size.** GitHub asks that Pages sites stay under 1GB. A full-res gallery can run several times that. It has worked in practice, but it is unsupported, so for recurring work plan on the Cloudflare R2 move described at the bottom of this file.
 
 ---
 

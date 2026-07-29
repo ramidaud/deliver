@@ -258,6 +258,7 @@ footer {
         <li>Repository permissions → <strong>Contents</strong> → set to <strong>Read and write</strong></li>
         <li>Generate token, copy it, paste it above (GitHub only shows it once)</li>
       </ol>
+      <p style="margin-top:10px;">Starting a new client repo from the template? The token is scoped to specific repos, so add the new one to its repository list or publishing will fail with a 403.</p>
     </details>
 
     <div class="row">
@@ -332,7 +333,16 @@ footer {
 
   <section>
     <h2>Publish</h2>
-    <p class="hint">Uploads everything and writes <code>manifest.json</code> in one commit to <code>{{branch}}</code>.</p>
+    <p class="hint">Uploads everything and writes <code>manifest.json</code> in one commit.</p>
+
+    <div class="check-row">
+      <input type="checkbox" id="f-replace">
+      <label for="f-replace" style="margin:0; text-transform:none; font-weight:400; letter-spacing:normal; color:var(--muted);">
+        Start fresh &mdash; replace the whole gallery with what's dropped above
+      </label>
+    </div>
+    <p class="hint" id="publish-mode" style="margin:10px 0 18px;"></p>
+
     <button class="primary" id="btn-publish">Publish gallery</button>
     <div class="log" id="log"></div>
     <div class="success" id="success">
@@ -457,7 +467,14 @@ function renderList(target) {
   [...files[target].values()].sort((a, b) => a.name.localeCompare(b.name)).forEach(f => {
     const row = document.createElement('div');
     row.className = 'filerow';
-    row.innerHTML = `<span class="name">${f.name}</span><span class="size">${fmtSize(f.size)}</span>`;
+    const nameEl = document.createElement('span');
+    nameEl.className = 'name';
+    nameEl.textContent = f.name;
+    const sizeEl = document.createElement('span');
+    sizeEl.className = 'size';
+    sizeEl.textContent = fmtSize(f.size);
+    row.appendChild(nameEl);
+    row.appendChild(sizeEl);
     const btn = document.createElement('button');
     btn.textContent = '×';
     btn.title = 'Remove';
@@ -468,6 +485,7 @@ function renderList(target) {
   document.getElementById(`count-${target}`).textContent =
     files[target].size ? `${files[target].size} file${files[target].size === 1 ? '' : 's'}` : '';
   checkMismatch();
+  updatePublishMode();
 }
 function checkMismatch() {
   const box = document.getElementById('mismatch-warning');
@@ -486,6 +504,52 @@ function checkMismatch() {
   }
 }
 
+// ---------- published state (what's already live) ----------
+// null = not yet checked. Publish always re-fetches so this is only for display.
+let published = null;
+
+async function fetchManifest(cfg) {
+  try {
+    const file = await gh(cfg, `/repos/${cfg.owner}/${cfg.repo}/contents/manifest.json?ref=${cfg.branch}`);
+    const data = JSON.parse(decodeURIComponent(escape(atob(file.content))));
+    return {
+      client: data.client || '',
+      date: data.date || '',
+      intro: data.intro || '',
+      hero: data.hero || [],
+      photos: data.photos || [],
+    };
+  } catch (e) {
+    if (/→ 404/.test(e.message)) {
+      // A missing manifest and a wrong repo/branch both 404. Only treat it as
+      // "no manifest yet" if the branch itself resolves — otherwise a typo in
+      // the repo field would look like an empty gallery and wipe the photo list.
+      await gh(cfg, `/repos/${cfg.owner}/${cfg.repo}/git/ref/heads/${cfg.branch}`);
+      return { client: '', date: '', intro: '', hero: [], photos: [] };
+    }
+    throw e;
+  }
+}
+
+function updatePublishMode() {
+  const el = document.getElementById('publish-mode');
+  const replace = document.getElementById('f-replace').checked;
+  const dropped = files.social.size;
+  const live = published ? published.photos.length : null;
+
+  if (replace) {
+    el.innerHTML = live
+      ? `<strong>Replace mode.</strong> The gallery will list only the ${dropped} social photo(s) dropped above, discarding the ${live} currently published. Old image files stay in the repo but disappear from the gallery.`
+      : `<strong>Replace mode.</strong> The gallery will list only the ${dropped} social photo(s) dropped above.`;
+  } else if (live === null) {
+    el.innerHTML = `<strong>Add mode.</strong> Anything already published is kept and the ${dropped} social photo(s) above are added. Click "Load current site data" to see what's live now.`;
+  } else {
+    const merged = new Set([...published.photos, ...files.social.keys()]);
+    el.innerHTML = `<strong>Add mode.</strong> ${live} photo(s) already published + ${dropped} dropped = <strong>${merged.size} in the gallery</strong> after publishing.`;
+  }
+}
+document.getElementById('f-replace').addEventListener('change', updatePublishMode);
+
 // ---------- load current site data ----------
 document.getElementById('btn-load').addEventListener('click', async () => {
   const cfg = getCfg();
@@ -493,12 +557,13 @@ document.getElementById('btn-load').addEventListener('click', async () => {
   if (!cfg.token || !cfg.owner || !cfg.repo) { status.textContent = 'Fill in token, owner and repo first.'; return; }
   status.textContent = 'Loading…';
   try {
-    const file = await gh(cfg, `/repos/${cfg.owner}/${cfg.repo}/contents/manifest.json?ref=${cfg.branch}`);
-    const data = JSON.parse(decodeURIComponent(escape(atob(file.content))));
-    document.getElementById('f-client').value = data.client || '';
-    document.getElementById('f-date').value = data.date || '';
-    document.getElementById('f-intro').value = data.intro || '';
-    status.textContent = `Loaded. Currently published: ${(data.photos || []).length} photo(s), ${(data.hero || []).length} hero image(s). (Existing images aren’t re-downloaded here — drop new ones above only if you’re adding or replacing.)`;
+    const data = await fetchManifest(cfg);
+    published = data;
+    document.getElementById('f-client').value = data.client;
+    document.getElementById('f-date').value = data.date;
+    document.getElementById('f-intro').value = data.intro;
+    status.textContent = `Loaded. Currently published: ${data.photos.length} photo(s), ${data.hero.length} hero image(s). Existing images stay put — only drop files above for photos you're adding or replacing.`;
+    updatePublishMode();
   } catch (e) {
     status.textContent = 'Could not load manifest.json: ' + e.message;
   }
@@ -557,16 +622,43 @@ document.getElementById('btn-publish').addEventListener('click', async () => {
   for (const [name, file] of files.social) allEntries.push({ path: `social/${name}`, file });
   for (const [name, file] of files.full)   allEntries.push({ path: `full/${name}`,   file });
 
-  const oversized = allEntries.filter(e => e.file.size > 95 * 1024 * 1024);
+  // The API takes base64, which inflates payloads by ~33%, so the real ceiling
+  // against GitHub's 100MB blob limit is ~70MB of actual file.
+  const MAX_FILE_BYTES = 70 * 1024 * 1024;
+  const oversized = allEntries.filter(e => e.file.size > MAX_FILE_BYTES);
   if (oversized.length) {
-    log(`These files are too close to GitHub’s 100MB per-file limit and were skipped: ${oversized.map(e => e.path).join(', ')}`, 'warn');
+    log(`Skipped — over the ~70MB per-file API limit: ${oversized.map(e => e.path).join(', ')}`, 'warn');
   }
-  const uploadEntries = allEntries.filter(e => e.file.size <= 95 * 1024 * 1024);
+  const uploadEntries = allEntries.filter(e => e.file.size <= MAX_FILE_BYTES);
 
   btn.disabled = true;
   saveConfig();
 
   try {
+    // Always re-read what's live rather than trusting an earlier "Load" click,
+    // so a stale page can't silently drop photos from the manifest.
+    const replace = document.getElementById('f-replace').checked;
+    let baseHero = [], basePhotos = [];
+    if (replace) {
+      log('Replace mode — the manifest will list only the files dropped above.', 'warn');
+    } else {
+      log('Reading the published manifest…');
+      const live = await fetchManifest(cfg);
+      published = live;
+      baseHero = live.hero;
+      basePhotos = live.photos;
+      log(`  keeping ${basePhotos.length} published photo(s), ${baseHero.length} hero image(s)`, 'ok');
+    }
+
+    const finalHero   = [...new Set([...baseHero,   ...files.hero.keys()])].sort();
+    const finalPhotos = [...new Set([...basePhotos, ...files.social.keys()])].sort();
+
+    if (!finalPhotos.length) {
+      log('Nothing to publish — the gallery would have zero photos. Drop some social images first.', 'err');
+      btn.disabled = false;
+      return;
+    }
+
     log(`Reading ${uploadEntries.length} file(s) and creating blobs…`);
     let done = 0;
     const blobs = await pool(uploadEntries, 4, async entry => {
@@ -580,13 +672,7 @@ document.getElementById('btn-publish').addEventListener('click', async () => {
       return { path: entry.path, sha: blob.sha };
     });
 
-    const manifest = {
-      client,
-      date,
-      intro,
-      hero: [...files.hero.keys()].sort(),
-      photos: [...files.social.keys()].sort(),
-    };
+    const manifest = { client, date, intro, hero: finalHero, photos: finalPhotos };
     const manifestBlob = await gh(cfg, `/repos/${cfg.owner}/${cfg.repo}/git/blobs`, {
       method: 'POST',
       body: JSON.stringify({ content: btoa(unescape(encodeURIComponent(JSON.stringify(manifest, null, 2)))), encoding: 'base64' }),
@@ -624,7 +710,16 @@ document.getElementById('btn-publish').addEventListener('click', async () => {
       body: JSON.stringify({ sha: commit.sha }),
     });
 
-    log(`Done — commit ${commit.sha.slice(0, 7)}`, 'ok');
+    log(`Done — commit ${commit.sha.slice(0, 7)}. Gallery now lists ${finalPhotos.length} photo(s).`, 'ok');
+
+    // What we just wrote is now what's live, so Add mode stays accurate
+    // without needing a reload.
+    published = { client, date, intro, hero: finalHero, photos: finalPhotos };
+    files.hero.clear(); files.social.clear(); files.full.clear();
+    renderList('hero'); renderList('social'); renderList('full');
+    document.getElementById('f-replace').checked = false;
+    updatePublishMode();
+
     const pagesUrl = `https://${cfg.owner}.github.io/${cfg.repo}/`;
     document.getElementById('success-link').href = pagesUrl;
     document.getElementById('success').classList.add('show');
@@ -634,6 +729,8 @@ document.getElementById('btn-publish').addEventListener('click', async () => {
     btn.disabled = false;
   }
 });
+
+updatePublishMode();
 </script>
 </body>
 </html>
