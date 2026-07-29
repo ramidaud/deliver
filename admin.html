@@ -463,15 +463,26 @@ async function gh(cfg, path, opts = {}) {
 // Release assets go to a different host and take raw bytes, not JSON.
 async function ghUpload(cfg, releaseId, name, blob) {
   const url = `https://uploads.github.com/repos/${cfg.owner}/${cfg.repo}/releases/${releaseId}/assets?name=${encodeURIComponent(name)}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${cfg.token}`,
-      Accept: 'application/vnd.github+json',
-      'Content-Type': 'application/octet-stream',
-    },
-    body: blob,
-  });
+  let res;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${cfg.token}`,
+        Accept: 'application/vnd.github+json',
+        'Content-Type': 'application/octet-stream',
+      },
+      body: blob,
+    });
+  } catch (e) {
+    // A blocked cross-origin request surfaces as a bare "Failed to fetch" with
+    // no status, which is otherwise indistinguishable from being offline.
+    throw new Error(
+      `upload ${name} failed before reaching GitHub (${e.message}). `
+      + 'If the browser console shows a CORS error, this host is refusing the '
+      + 'upload and full-resolution cannot be published from the browser.'
+    );
+  }
   if (!res.ok) {
     let detail = '';
     try { detail = (await res.json()).message; } catch (e) {}
