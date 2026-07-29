@@ -103,6 +103,30 @@ textarea { resize: vertical; min-height: 70px; }
 }
 .check-row input { width: auto; }
 
+.token-help {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.token-help summary {
+  cursor: pointer;
+  list-style: none;
+}
+.token-help summary::-webkit-details-marker { display: none; }
+.token-help summary a { color: var(--accent); font-weight: 600; text-decoration: none; }
+.token-help summary a:hover { text-decoration: underline; }
+.token-help ol {
+  margin: 10px 0 4px 20px;
+  padding: 0;
+  line-height: 1.7;
+}
+.token-help code {
+  background: var(--line);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
 .dropzone {
   border: 1.5px dashed var(--line);
   border-radius: 10px;
@@ -225,6 +249,16 @@ footer {
 
     <label for="f-token">GitHub token</label>
     <input type="password" id="f-token" placeholder="github_pat_&hellip; or ghp_&hellip;" autocomplete="off">
+    <details class="token-help">
+      <summary>Don't have a token? <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener" onclick="event.stopPropagation()">Generate one on GitHub &rarr;</a></summary>
+      <ol>
+        <li>Token name: anything, e.g. <code>gallery admin</code></li>
+        <li>Resource owner: your account</li>
+        <li>Repository access → <strong>Only select repositories</strong> → pick this repo</li>
+        <li>Repository permissions → <strong>Contents</strong> → set to <strong>Read and write</strong></li>
+        <li>Generate token, copy it, paste it above (GitHub only shows it once)</li>
+      </ol>
+    </details>
 
     <div class="row">
       <div>
